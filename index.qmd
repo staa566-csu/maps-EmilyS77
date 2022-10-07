@@ -1,0 +1,66 @@
+---
+title: "Assignment 3 - Mapping"
+author: "EmilyStarer"
+format: html
+editor: visual
+---
+
+## Summary
+
+The data source is advertising media data. The data is from actual advertising campaigns. I chose to highlight the number of Advertisers per state with live media. The goal of this map is to understand a ranking of media by state to better understand how to focus efforts geographically. I decided to count the distinct number of advertisers per state and merge that with the original dataset. The spacial units are state using ggplot to great the state.
+
+## Import Data Source
+
+Import of the library. Using `echo: false` option to disable the printing of code (only output is displayed).
+
+```{r}
+#| echo: false
+library(tidyverse)
+library(plotly)
+library(maps)
+library(ggplot2)
+library(ggdendro)
+library(plotly)
+library(usmap)
+```
+
+Import of the data source
+
+```{r}
+#read in data
+library(readr)
+geo <- read.csv("geomediadata1.csv") ## Since this is a technical issue, I decided to help her knit the file. -- Kevin
+#add in geometry column to data fame
+us_geo_data <- map_data("state") %>%mutate(Region.Name=str_to_title(region))
+
+us_geo_data <- left_join(us_geo_data,geo,
+          by="Region.Name", all=T)
+```
+
+```{r}
+### us co-ordinate
+new_us_geo_data <- us_geo_data %>%
+  dplyr::select(region, long, lat) %>%
+  unique()
+
+#count of advertisers per state 
+Adv <- us_geo_data %>% group_by(region) %>%
+  summarize (distinct_adv = n_distinct(Advertiser.Name))
+
+#add in count of advertiser name 
+new_geo_grouped <- right_join(new_us_geo_data, Adv, by="region", all=T)
+```
+
+```{r}
+new_plot <- ggplot(new_geo_grouped, 
+       mapping = aes(x = long, y = lat, group = region, 
+                     fill = distinct_adv,
+                     text = paste("Number of Advertisers:", round(distinct_adv)))) +
+  geom_polygon(color="white") +
+  ggdendro::theme_dendro() +
+  guides(fill=guide_legend(title="Number of Advertisers per State serving Media")) +
+  coord_map() + 
+  ggtitle("Number of Advertisers per State serving Media")
+
+ggplotly(new_plot, tooltip = "text")
+```
